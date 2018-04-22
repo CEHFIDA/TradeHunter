@@ -1,0 +1,7 @@
+total 32
+drwxrwxrwx 0 root root  4096 Apr 19 23:37 .
+drwxrwxrwx 0 root root  4096 Apr 19 21:50 ..
+-rwxrwxrwx 1 root root 28922 Apr 19 23:25 a.out
+-rwxrwxrwx 1 root root   331 Apr 19 23:34 block_processor.c
+-rwxrwxrwx 1 root root     0 Apr 19 23:37 output_04_19_2018
+drwxrwxrwx 0 root root  4096 Apr 19 21:52 pipe

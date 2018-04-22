@@ -1,0 +1,23 @@
+if(argc < 4){
+		printf("You need to assign two times and a heap size.\n");
+		exit(1);
+	}
+	long int start_stamp = string_to_epoch(arguments[1]);
+	long int end_stamp = string_to_epoch(arguments[2]);
+	if(end_stamp < start_stamp){
+		swap(&end_stamp, &start_stamp);
+	}
+	printf("Your timestamps are %ld and %ld\n", start_stamp, end_stamp);
+	long int start_block = get_block_of_time(start_stamp);
+	printf("The block at time %ld is %ld\n", start_stamp, start_block);
+	long int end_block = get_block_of_time(end_stamp);
+	printf("The block at time %ld is %ld\n", end_stamp, end_block);
+	if(end_block == start_block) start_block--;
+	int total_blocks = end_block - start_block;
+	printf("There are %d blocks between the time.\n", total_blocks);
+	int processed_blocks = 0;
+	long int current_block = start_block;
+	for(;current_block < end_block + 1; current_block++){
+		printf("\rFinished block %d of %d", ++processed_blocks, total_blocks);
+	}
+	printf("\n");
