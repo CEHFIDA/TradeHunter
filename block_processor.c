@@ -81,14 +81,18 @@ long int get_block_of_time(long int timestamp){
     return middle;
 }
 
-typedef struct transaction {
+struct transaction {
 	char tx[128];
 	char time[64];
 	char from[64];
 	char to[64];
 	float amount;
 	size_t pos;
-} tx;
+};
+
+
+
+typedef struct transaction tx;
 int heap_size = 10;
 
 tx* new_tx(char* _tx, char* _time, char* _from, char* _to, float _amount){
@@ -102,7 +106,8 @@ tx* new_tx(char* _tx, char* _time, char* _from, char* _to, float _amount){
 }
 
 pqueue_t *pq;
-
+bst_t* root;
+string* args;
 
 void extract_tx_from_page(string page){
 	string holder = page;
@@ -167,10 +172,32 @@ void extract_tx_from_page(string page){
 
 	    float price = atof(amount);
 	    //place_in_heap(tx, time, from, to, price);
-		//printf("%s,%s,%s,%s,%s\n", tx, time, from, to, amount);
-	    pqueue_insert(pq, new_tx(tx, time, from, to, price));
+		////printf("%s,%s,%s,%s,%s\n", tx, time, from, to, amount);
+		string choice;
+		if(strcmp(args[4], "b") == 0) choice = to;
+		if(strcmp(args[4], "s") == 0) choice = from;
+		bst_t* qr = bst_search(root, choice);
+		if( qr == NULL ){
+			////printf("%s Not Found\n", choice);	
+				if(pqueue_insert(pq, new_tx(tx, time, from, to, price)) > 0){
+	    	
+	    		root = bst_insert(root, choice);
+	    	}
+		}else{
+			//printf("Found %s at %p\n", choice, qr );
+		}
+	    
 		holder++;
 	}
+}
+
+void remove_from_tree(void* p)
+{
+	tx* t = (tx*) p;
+	string choice;
+	if(strcmp(args[4], "b") == 0) choice = t->to;
+	if(strcmp(args[4], "s") == 0) choice = t->from;
+	root = bst_remove(root, choice);
 }
 
 void process_block_for_transactions(long int block_num){
@@ -181,7 +208,7 @@ void process_block_for_transactions(long int block_num){
 	json_object* result = geth_call("eth_getBlockByNumber", parameters);
 	if(!json_object_is_type(result, json_type_null)){
 		const char * list = json_object_get_string(find_something(result, "transactions"));
-		printf("%ld %s\n", block_num, list);
+		//printf("%ld %s\n", block_num, list);
 	}
 	char url[128];
 	strcpy(url, "https://etherscan.io/txs?block=");
@@ -247,24 +274,52 @@ set_pos(void *a, size_t pos)
 }
 
 int main(int argc, string* arguments){
-
-	
 	tx   *ns;
 	tx   *n;
 	heap_size = atoi(arguments[3]);
-
+	args = arguments;
 	pq = pqueue_init(heap_size + 1, cmp_pri, get_pri, set_pri, get_pos, set_pos);
+	root=NULL;
+	if(argc < 5){
+		//printf("You need to assign two times, a heap size, and an action b or s.\n");
+		exit(1);
+	}
+	if(strcmp(args[4], "b") != 0 && strcmp(args[4], "s") != 0){
+		//printf("Action must be b for buy or s for sell.\n");
+		exit(1);
+	}
 
+	long int start_stamp = string_to_epoch(arguments[1]);
+	long int end_stamp = string_to_epoch(arguments[2]);
+	if(end_stamp < start_stamp){
+		swap(&end_stamp, &start_stamp);
+	}
+	printf("Your timestamps are %ld and %ld\n", start_stamp, end_stamp);
+	long int start_block = get_block_of_time(start_stamp);
+	printf("The block at time %ld is %ld\n", start_stamp, start_block);
+	long int end_block = get_block_of_time(end_stamp);
+	printf("The block at time %ld is %ld\n", end_stamp, end_block);
+	if(end_block == start_block) start_block--;
+	int total_blocks = end_block - start_block;
+	printf("There are %d blocks between the time.\n", total_blocks);
+	int processed_blocks = 0;
+	long int current_block = start_block;
+	for(;current_block < end_block + 1; current_block++){
+		process_block_for_transactions(current_block);
+		printf("Finished block %d of %d\n", ++processed_blocks, total_blocks);
+	}
+	printf("\n");
 	
-	process_block_for_transactions(5482750);
-	process_block_for_transactions(5480500);
-	process_block_for_transactions(5473001);
-	process_block_for_transactions(5433005);
+	// process_block_for_transactions(5482750);
+	// process_block_for_transactions(5480500);
+	// process_block_for_transactions(5473001);
+	// process_block_for_transactions(5433005);
 	
-	
+	//printf("%zd\n", pqueue_size(pq));
+
     int row = 0;
 	while ((n = pqueue_pop(pq)) && pqueue_size(pq) > 0){
-		printf("%f [%s %s]\n", n->amount, n->from, n->to);
+		printf("%f,%s,%s,%s,%s\n", n->amount, n->from, n->to, n->time, n->tx);
 		row++;
 	}
 

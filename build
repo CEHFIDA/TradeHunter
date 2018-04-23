@@ -1,2 +1,2 @@
-gcc -g block_processor.c libpqueue/src/pqueue.c hashset/hashset.c regex-c/re.c -lcurl -ljson-c
-./a.out yesterday yesterday $1 s
+gcc -g -std=c99 block_processor.c libpqueue/src/pqueue.c hashset/hashset.c regex-c/re.c -lcurl -ljson-c
+./a.out 'Jan 13 11:00' 'Jan 13 12:00' $1 $2

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include "pipe/pipe.h"
 #include "pipe/pipe_util.h"
 #include <json-c/json.h>
@@ -13,6 +14,193 @@
 #include "regex-c/re.h"
 #include "libpqueue/src/pqueue.h"
 #include "hashset/hashset.h"
+
+#ifndef _BST_H
+#define _BST_H
+
+#define END             0
+#define INSERT          1
+#define PRINT_INORDER       2
+#define PRINT_PREORDER      3
+#define PRINT_POSTORDER     4
+#define HEIGHT          5
+#define SEARCH          6
+#define REMOVE          7
+#define MAX         8
+#define MIN         9
+#define PRINT_ASCII         10
+
+typedef struct bst_t {
+    char value[64];
+    struct bst_t* left;
+    struct bst_t* right;
+} bst_t;
+
+bst_t* bst_insert(bst_t*, char*);
+bst_t* bst_remove(bst_t*, char*);
+void bst_free(bst_t*);
+void bst_print_inorder(bst_t*);
+void bst_print_preorder(bst_t*);
+void bst_print_postorder(bst_t*);
+bst_t*  bst_search(bst_t*, char*);
+bst_t*  bst_min(bst_t*);
+bst_t*  bst_max(bst_t*);
+int bst_height(bst_t*);
+
+
+#endif /* _BST_H */
+
+int counter = 0;
+bst_t*
+bst_insert(bst_t* pbst, char new[64])
+{
+    if (pbst == NULL) {
+        pbst = malloc(sizeof(struct bst_t));
+        if (pbst == NULL) {
+            perror("bst_insert: malloc");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(pbst->value, new);
+        pbst->left = NULL;
+        pbst->right = NULL;
+        //printf("inserted %s\n", pbst->value);
+        //printf("tree is now %d large.\n", ++counter);
+    }
+    else if (strcmp(new, pbst->value) < 0){
+        //printf("insertion of %s going left\n", new);
+        pbst->left = bst_insert(pbst->left, new);
+    }
+    else if (strcmp(new, pbst->value) > 0){
+        //printf("insertion of %s going right\n", new);
+        pbst->right = bst_insert(pbst->right, new);
+    }
+
+    return pbst;
+}
+
+bst_t*
+bst_remove(bst_t* pbst, char del[64])
+{
+    bst_t *tmp;
+    if (pbst == NULL)
+        return pbst;
+    else if (strcmp(del, pbst->value) < 0)
+        pbst->left = bst_remove(pbst->left,del);
+    else if (strcmp(del, pbst->value) < 0)
+        pbst->right = bst_remove(pbst->left,del);
+    /*two children*/
+    else if (pbst->left != NULL && pbst->right != NULL) 
+    {
+        tmp = bst_min(pbst->right);
+        strcpy(pbst->value, tmp->value);
+        pbst->right = bst_remove(pbst->right,pbst->value);
+    }
+    /*zero or one child*/
+    else{
+        tmp = pbst;
+        if(pbst->left == NULL)
+            pbst=pbst->right;
+        else if(pbst->right == NULL)
+            pbst=pbst->left;
+        free(tmp);
+    }
+    return pbst;
+
+}
+
+void 
+bst_free(bst_t* pbst)
+{
+    if (pbst != NULL) {
+        bst_free(pbst->left);
+        bst_free(pbst->right);
+        free(pbst->value);
+        free(pbst);
+    }
+}
+
+void 
+bst_print_inorder(bst_t* pbst)
+{
+    if(pbst) {
+        bst_print_inorder(pbst->left);
+        fprintf(stdout,"%s\n",pbst->value);
+        bst_print_inorder(pbst->right);
+    }
+}
+
+void 
+bst_print_preorder(bst_t* pbst)
+{
+    if (pbst)
+    {
+        fprintf(stderr, "%s\n", pbst->value);
+        bst_print_preorder(pbst->left);
+        bst_print_preorder(pbst->right);
+    }
+}
+
+void 
+bst_print_postorder(bst_t* pbst)
+{
+    if (pbst)
+    {
+        bst_print_postorder(pbst->left);
+        bst_print_postorder(pbst->right);
+        fprintf(stderr, "%s\n", pbst->value);
+    }
+}
+
+bst_t* 
+bst_search(bst_t* pbst, char qry[64])
+{
+    if(pbst == NULL)
+        return NULL;
+    if(strcmp(qry, pbst->value) == 0)
+        return pbst;
+    if(strcmp(qry, pbst->value) < 0)
+        return bst_search(pbst->left,qry);
+    else if(strcmp(qry, pbst->value) > 0)
+        return bst_search(pbst->right,qry);
+
+}
+
+bst_t* 
+bst_min(bst_t* pbst)
+{
+    if(pbst == NULL)
+        return NULL;
+    if (pbst->left == NULL)
+        return pbst;
+    else
+        return bst_min(pbst->left);
+}
+
+bst_t* 
+bst_max(bst_t* pbst)
+{
+    if(pbst == NULL)
+        return NULL;
+    if (pbst->right == NULL)
+        return pbst;
+    else
+        return bst_max(pbst->right);
+}
+
+int 
+bst_height(bst_t* pbst)
+{
+    int tmp1,tmp2;
+    if (pbst)
+    {
+        tmp1 = bst_height(pbst->left);
+        tmp2 = bst_height(pbst->right);
+        if (tmp1>tmp2)
+            return tmp1+1;
+        else
+            return tmp2+1;
+    }
+}
 
 typedef char* string;
 
@@ -279,6 +467,11 @@ struct curl_fetch_st* get_html_from_post(string url, json_object* json){
     curl_easy_setopt(ch, CURLOPT_POSTFIELDS, json_object_to_json_string(json));
 
     rcode = curl_fetch_url(ch, strstr(url, "http"), cf);
+
+    while(rcode != CURLE_OK || cf->size < 1){
+        sleep(0.5);
+        rcode = curl_fetch_url(ch, strstr(url, "http"), cf);
+    }
 
     /* cleanup curl handle */
     curl_easy_cleanup(ch);
